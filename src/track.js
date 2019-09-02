@@ -79,27 +79,31 @@ function extractTCXTracks(tcx, name) {
     const parsedTracks = [];
     for (const act of tcx.Activities[0].Activity) {
         for (const lap of act.Lap || []) {
-            if (!lap.Track || lap.Track.length === 0) {
+            if (!lap.Track) {
                 continue;
             }
-            let trackPoints = lap.Track[0].Trackpoint.filter(it => it.Position);
-            let timestamp;
-            let points = []
 
-            for (let trkpt of trackPoints) {
-                if (trkpt.Time && typeof trkpt.Time[0] === 'string') {
-                    timestamp = new Date(trkpt.Time[0]);
+            for (const track of lap.Track)
+            {
+                let trackPoints = track.Trackpoint.filter(it => it.Position);
+                let timestamp;
+                let points = []
+
+                for (let trkpt of trackPoints) {
+                    if (trkpt.Time && typeof trkpt.Time[0] === 'string') {
+                        timestamp = new Date(trkpt.Time[0]);
+                    }
+                    points.push({
+                        lat: parseFloat(trkpt.Position[0].LatitudeDegrees[0]),
+                        lng: parseFloat(trkpt.Position[0].LongitudeDegrees[0]),
+                        // These are available to us, but are currently unused
+                        // elev: parseFloat(trkpt.ElevationMeters[0]) || 0,
+                    });
                 }
-                points.push({
-                    lat: parseFloat(trkpt.Position[0].LatitudeDegrees[0]),
-                    lng: parseFloat(trkpt.Position[0].LongitudeDegrees[0]),
-                    // These are available to us, but are currently unused
-                    // elev: parseFloat(trkpt.ElevationMeters[0]) || 0,
-                });
-            }
 
-            if (points.length > 0) {
-                parsedTracks.push({timestamp, points, name});
+                if (points.length > 0) {
+                    parsedTracks.push({timestamp, points, name});
+                }
             }
         }
     }
