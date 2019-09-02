@@ -235,9 +235,9 @@ export default class GpxMap {
         if (lineOptions.detectColors) {
             if (/-(Hike|Walk)\.gpx/.test(track.filename)) {
                 lineOptions.color = '#ffc0cb';
-            } else if (/-Run\.gpx/.test(track.filename)) {
+            } else if (/-Run\.gpx/.test(track.filename) || track.sport === 'Running') {
                 lineOptions.color = '#ff0000';
-            } else if (/-Ride\.gpx/.test(track.filename)) {
+            } else if (/-Ride\.gpx/.test(track.filename) || track.sport === 'Biking') {
                 lineOptions.color = '#00ffff';
             }
         }

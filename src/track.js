@@ -78,6 +78,7 @@ function extractTCXTracks(tcx, name) {
 
     const parsedTracks = [];
     for (const act of tcx.Activities[0].Activity) {
+        let sport = act.$.Sport;
         for (const lap of act.Lap || []) {
             if (!lap.Track) {
                 continue;
@@ -102,7 +103,7 @@ function extractTCXTracks(tcx, name) {
                 }
 
                 if (points.length > 0) {
-                    parsedTracks.push({timestamp, points, name});
+                    parsedTracks.push({timestamp, points, name, sport});
                 }
             }
         }
