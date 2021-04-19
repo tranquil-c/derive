@@ -14,8 +14,8 @@ const DEFAULT_OPTIONS = {
     theme: 'CartoDB.DarkMatter',
     lineOptions: {
         color: '#0CB1E8',
-        weight: 1,
-        opacity: 0.5,
+        weight: 3,
+        opacity: 0.25,
         smoothFactor: 1,
         overrideExisting: true,
         detectColors: true,
@@ -44,6 +44,14 @@ export default class GpxMap {
             zoom: 10,
             preferCanvas: true,
         });
+
+        let fillStroke = leaflet.Canvas.prototype._fillStroke;
+        leaflet.Canvas.prototype._fillStroke = (ctx, layer) => {
+            let compositeOperation = ctx.globalCompositeOperation;
+            ctx.globalCompositeOperation = 'lighten';
+            fillStroke(ctx, layer);
+            ctx.globalCompositeOperation = compositeOperation;
+        }
 
         leaflet.easyButton({
             type: 'animate',
@@ -235,10 +243,12 @@ export default class GpxMap {
         if (lineOptions.detectColors) {
             if (/-(Hike|Walk)\.gpx/.test(track.filename)) {
                 lineOptions.color = '#ffc0cb';
-            } else if (/-Run\.gpx/.test(track.filename) || track.sport === 'Running') {
+            } else if (/-Run\.gpx/.test(track.filename) || track.name.startsWith('Running') || track.sport === 'Running' || track.sport === 'running') {
+                lineOptions.color = '#0000ff';
+            } else if (/-Ride\.gpx/.test(track.filename) || track.name.startsWith('Cycling') || track.sport === 'Biking' || track.sport === 'cycling') {
+                lineOptions.color = '#00ff00';
+            } else {
                 lineOptions.color = '#ff0000';
-            } else if (/-Ride\.gpx/.test(track.filename) || track.sport === 'Biking') {
-                lineOptions.color = '#00ffff';
             }
         }
 
