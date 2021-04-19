@@ -119,6 +119,11 @@ function extractFITTracks(fit, name) {
     }
 
     let timestamp;
+    let sport = fit.sport && fit.sport.sport || null;
+    if (!sport && fit.file_id.manufacturer === 'zwift') {
+        sport = 'cycling';
+    }
+
     const points = [];
     for (const record of fit.records) {
         if (record.position_lat && record.position_long) {
@@ -131,7 +136,7 @@ function extractFITTracks(fit, name) {
         record.timestamp && (timestamp = record.timestamp);
     }
 
-    return points.length > 0 ? [{timestamp, points, name}] : [];
+    return points.length > 0 ? [{timestamp, points, name, sport}] : [];
 }
 
 function extractIGCTracks(igc) {
