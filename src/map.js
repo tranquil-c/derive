@@ -297,11 +297,12 @@ export default class GpxMap {
     center() {
         // If there are no tracks, then don't try to get the bounds, as there
         // would be an error
-        if (this.tracks.length === 0 && this.imageMarkers.length === 0) {
+        let visibleTracks = this.tracks.filter(t => t.visible);
+        if (visibleTracks.length === 0 && this.imageMarkers.length === 0) {
             return;
         }
 
-        let tracksAndImages = this.tracks.map(t => t.line)
+        let tracksAndImages = visibleTracks.map(t => t.line)
             .concat(this.imageMarkers);
 
         this.map.fitBounds((new leaflet.featureGroup(tracksAndImages)).getBounds(), {
