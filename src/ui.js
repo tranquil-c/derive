@@ -422,7 +422,7 @@ export function buildFilterModal(tracks, filters, finishCallback) {
 
     modal.afterClose((modal) => {
         let elements = document.getElementById('settings').elements;
-        let filters = Object.assign({}, filters);
+        let filters = Object.assign({});
 
         for (let key of ['minDate', 'maxDate']) {
             filters[key] = elements[key].value;
