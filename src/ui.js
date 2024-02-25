@@ -251,18 +251,22 @@ export function buildSettingsModal(tracks, opts, updateCallback) {
             return line.options.color === tracks[0].line.options.color;
         });
 
-        if (!allSameColor) {
-            overrideExisting = false;
-        } else {
+        if (allSameColor) {
             opts.lineOptions.color = tracks[0].line.options.color;
         }
     }
 
-    let detect = opts.lineOptions.detectColors ? 'checked' : '';
+    let singleColor = opts.lineOptions.singleColor ? 'checked' : '';
+    let detectColors = opts.lineOptions.detectColors ? 'checked' : '';
+    let highlightNew = opts.lineOptions.highlightNew ? 'checked' : '';
+
     let themes = AVAILABLE_THEMES.map(t => {
         let selected = (t === opts.theme) ? 'selected' : '';
         return `<option ${selected} value="${t}">${t}</option>`;
     });
+
+    let newDate = opts.newDate;
+    let maxDate = new Date().toISOString().split('T')[0];
 
     let modalContent = `
 <h3>Options</h3>
@@ -279,8 +283,16 @@ export function buildSettingsModal(tracks, opts, updateCallback) {
         <legend>GPS Track Options</legend>
 
         <div class="row">
-            <label>Color</label>
+            <input name="colorMode" type="radio" id="singleColor" ${singleColor}>
+            <label for="singleColor">Single color</label>
             <input name="color" type="color" value=${opts.lineOptions.color}>
+            <br/>
+            <input name="colorMode" type="radio" id="detectColors" ${detectColors}>
+            <label for="detectColors">Color based on activity type</label>
+            <br/>
+            <input name="colorMode" type="radio" id="highlightNew" ${highlightNew}>
+            <label for="highlightNew">Highlight new activities</label>
+            <input type="date" id="newDate" value="${newDate || ''}" min="1990-01-01" max="${maxDate}">
         </div>
 
         <div class="row">
@@ -329,11 +341,6 @@ export function buildSettingsModal(tracks, opts, updateCallback) {
         <label>Override existing tracks</label>
         <input name="overrideExisting" type="checkbox" ${overrideExisting}>
     </span>
-
-    <span class="form-row">
-        <label>Detect color from Strava bulk export</label>
-        <input name="detectColors" type="checkbox" ${detect}>
-    </span>
 </form>`;
 
     let modal = picoModal({
@@ -350,7 +357,7 @@ export function buildSettingsModal(tracks, opts, updateCallback) {
         let elements = document.getElementById('settings').elements;
         let options = Object.assign({}, opts);
 
-        for (let opt of ['theme']) {
+        for (let opt of ['theme', 'newDate']) {
             options[opt] = elements[opt].value;
         }
 
@@ -363,7 +370,7 @@ export function buildSettingsModal(tracks, opts, updateCallback) {
             options.markerOptions[optionName] = elements[opt].value;
         }
 
-        for (let opt of ['overrideExisting', 'detectColors']) {
+        for (let opt of ['overrideExisting', 'detectColors', 'singleColor', 'highlightNew']) {
             options.lineOptions[opt] = elements[opt].checked;
         }
 
@@ -378,7 +385,8 @@ export function buildSettingsModal(tracks, opts, updateCallback) {
     modal.afterCreate(() => {
       let elements = document.getElementById('settings').elements;
       for (let opt of ['theme', 'color', 'weight', 'opacity', 'markerColor',
-                       'markerWeight', 'markerOpacity', 'markerRadius']) {
+                       'markerWeight', 'markerOpacity', 'markerRadius',
+                       'newDate', 'detectColors', 'singleColor', 'highlightNew']) {
         elements[opt].addEventListener('change', applyOptions);
       }
     });

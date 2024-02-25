@@ -18,7 +18,9 @@ const DEFAULT_OPTIONS = {
         opacity: 0.25,
         smoothFactor: 1,
         overrideExisting: true,
+        singleColor: false,
         detectColors: true,
+        highlightNew: false,
     },
     markerOptions: {
         color: '#00FF00',
@@ -168,14 +170,15 @@ export default class GpxMap {
         }
 
         if (opts.lineOptions.overrideExisting) {
-            this.tracks.forEach(({line}) => {
-                line.setStyle({
-                    color: opts.lineOptions.color,
-                    weight: opts.lineOptions.weight,
-                    opacity: opts.lineOptions.opacity,
+            this.tracks.forEach((track) => {
+                let lineOptions = this.getLineOptions(track, opts);
+                track.line.setStyle({
+                    color: lineOptions.color,
+                    weight: lineOptions.weight,
+                    opacity: lineOptions.opacity,
                 });
 
-                line.redraw();
+                track.line.redraw();
             });
 
             let markerOptions = opts.markerOptions;
@@ -236,21 +239,36 @@ export default class GpxMap {
         });
     }
 
-    addTrack(track) {
-        this.viewAll.enable();
-        let lineOptions = Object.assign({}, this.options.lineOptions);
+    getLineOptions(track, options = this.options) {
+        let lineOptions = Object.assign({}, options.lineOptions);
 
         if (lineOptions.detectColors) {
-            if (/-(Hike|Walk)\.gpx/.test(track.filename)) {
-                lineOptions.color = '#ffc0cb';
-            } else if (/-Run\.gpx/.test(track.filename) || track.name.startsWith('Running') || track.sport === 'Running' || track.sport === 'running') {
+            if (track.sport === 'walking') {
                 lineOptions.color = '#0000ff';
-            } else if (/-Ride\.gpx/.test(track.filename) || track.name.startsWith('Cycling') || track.sport === 'Biking' || track.sport === 'cycling') {
+            } else if (track.sport === 'running') {
+                lineOptions.color = '#0000ff';
+            } else if (track.sport === 'cycling') {
                 lineOptions.color = '#00ff00';
             } else {
                 lineOptions.color = '#ff0000';
             }
         }
+        else if (lineOptions.highlightNew)
+        {
+            let newDate = new Date(options.newDate);
+            if (track.timestamp > newDate)
+            {
+                lineOptions.color = '#00ff00';
+            } else {
+                lineOptions.color = '#ff0000';
+            }
+        }
+        return lineOptions;
+    }
+
+    addTrack(track) {
+        this.viewAll.enable();
+        let lineOptions = this.getLineOptions(track);
 
         let line = leaflet.polyline(track.points, lineOptions);
         line.addTo(this.map);

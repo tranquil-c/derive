@@ -15,6 +15,32 @@ const parser = new XMLParser({
     attributesGroupName: '$',
 });
 
+function getSport(sport, name) {
+    sport = sport?.toLowerCase();
+
+    if (!sport)
+    {
+        if (/-(Hike|Walk)\.gpx/.test(name) || name.startsWith('Walking')) {
+            sport = 'walking';
+        } else if (/-Run\.gpx/.test(name) || name.startsWith('Running')) {
+            sport = 'running';
+        } else if (/-Ride\.gpx/.test(name) || name.startsWith('Cycling')) {
+            sport = 'cycling';
+        } else {
+            sport = 'other';
+        }
+    }
+    else
+    {
+        if (sport === 'biking')
+        {
+            sport = 'cycling';
+        }
+    }
+
+    return sport;
+}
+
 function extractGPXTracks(gpx) {
     if (!gpx.trk && !gpx.rte) {
         console.log('GPX file has neither tracks nor routes!', gpx);
@@ -26,7 +52,8 @@ function extractGPXTracks(gpx) {
     if (gpx.trk) {
         const tracks = [].concat(gpx.trk ?? []);
         tracks.forEach(trk => {
-            let name = trk.name && trk.name.length > 0 ? trk.name[0] : 'untitled';
+            let name = (Array.isArray(trk.name) ? trk.name[0] : trk.name) ?? 'untitled';
+            let sport = getSport(undefined, name);
             let timestamp;
 
             const trackSegments = [].concat(trk.trkseg ?? []);
@@ -43,6 +70,7 @@ function extractGPXTracks(gpx) {
                         points.push({
                             lat: parseFloat(trkpt.$.lat),
                             lng: parseFloat(trkpt.$.lon),
+                            timestamp: timestamp,
                             // These are available to us, but are currently unused
                             // elev: parseFloat(trkpt.ele) || 0,
                         });
@@ -50,7 +78,7 @@ function extractGPXTracks(gpx) {
                 }
 
                 if (points.length > 0) {
-                    parsedTracks.push({timestamp, points, name});
+                    parsedTracks.push({timestamp, points, name, sport});
                 }
             });
         });
@@ -74,7 +102,7 @@ function extractGPXTracks(gpx) {
             }
 
             if (points.length > 0) {
-                parsedTracks.push({timestamp, points, name});
+                parsedTracks.push({timestamp, points, name, sport});
             }
         });
     }
@@ -92,6 +120,11 @@ function extractTCXTracks(tcx, name) {
     const activities = [].concat(tcx.Activities.Activity ?? []);
     for (const act of activities) {
         let sport = act.$.Sport;
+        if (sport === 'Other')
+        {
+            sport = act.Training.Plan.Name;
+        }
+        sport = getSport(sport, name);
 
         const laps = [].concat(act.Lap ?? []);
         for (const lap of laps) {
@@ -113,6 +146,7 @@ function extractTCXTracks(tcx, name) {
                     points.push({
                         lat: parseFloat(trkpt.Position.LatitudeDegrees),
                         lng: parseFloat(trkpt.Position.LongitudeDegrees),
+                        timestamp: timestamp,
                         // These are available to us, but are currently unused
                         // elev: parseFloat(trkpt.ElevationMeters[0]) || 0,
                     });
@@ -146,6 +180,7 @@ function extractFITTracks(fit, name) {
             points.push({
                 lat: record.position_lat,
                 lng: record.position_long,
+                timestamp: record.timestamp,
                 // Other available fields: timestamp, distance, altitude, speed, heart_rate
             });
         }
