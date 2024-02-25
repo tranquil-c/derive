@@ -72,8 +72,8 @@ function handleFileSelect(map, evt) {
     evt.preventDefault();
 
     let tracks = [];
-    let files = Array.from(evt.dataTransfer.files);
-    let modal = buildUploadModal(files.length);
+    let items = Array.from(evt.dataTransfer.items);
+    let modal = buildUploadModal(items.length);
 
     modal.show();
 
@@ -106,7 +106,50 @@ function handleFileSelect(map, evt) {
         }
     };
 
-    Promise.all(files.map(handleFile)).then(() => {
+    const readEntries = async reader => {
+        return new Promise(resolve => {
+            reader.readEntries(resolve);
+        })
+    }
+
+    const readAllEntries = async reader => {
+        const entries = [];
+        let newEntries;
+        do
+        {
+            newEntries = await readEntries(reader);
+            entries.push(...newEntries);
+        } while (newEntries.length > 0);
+        return entries;
+    }
+
+    const handleDirectory = async dir => {
+        const reader = dir.createReader();
+        return await readAllEntries(reader).then(async contents => {
+            modal.addDirectoryEntries(contents.length);
+            return Promise.all(contents.map(handleEntry))
+        });
+    };
+
+    const readFile = async entry => {
+        return new Promise(resolve => {
+            entry.file(resolve);
+        });
+    };
+
+    const handleEntry = async entry =>
+    {
+        if (entry.isFile)
+        {
+            return await readFile(entry).then(handleFile);
+        }
+        else if (entry.isDirectory)
+        {
+            return await handleDirectory(entry);
+        }
+    }
+
+    Promise.all(items.map(item => handleEntry(item.webkitGetAsEntry()))).then(() => {
         map.center();
         modal.finished();
     });
@@ -164,6 +207,11 @@ function buildUploadModal(numFiles) {
 
     modal.addSuccess = () => {
         numLoaded++;
+        modal.setContent(getModalContent());
+    };
+
+    modal.addDirectoryEntries = (count) => {
+        numFiles += count - 1;
         modal.setContent(getModalContent());
     };
 
