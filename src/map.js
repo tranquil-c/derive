@@ -120,6 +120,18 @@ export default class GpxMap {
             }],
         }).addTo(this.map);
 
+        this.animate = leaflet.easyButton({
+            type: 'animate',
+            states: [{
+                icon: 'fa-play fa-lg',
+                steateName: 'default',
+                title: 'Play',
+                onClick: () => {
+                    this.animateTracks();
+                },
+            }],  
+        }).addTo(this.map);
+
         this.markScrolled = () => {
             this.map.removeEventListener('movestart', this.markScrolled);
             this.scrolled = true;
@@ -127,6 +139,7 @@ export default class GpxMap {
 
         this.clearScroll();
         this.viewAll.disable();
+        this.animate.disable();
         this.switchTheme(this.options.theme);
         this.requestBrowserLocation();
     }
@@ -268,6 +281,7 @@ export default class GpxMap {
 
     addTrack(track) {
         this.viewAll.enable();
+        this.animate.enable();
         let lineOptions = this.getLineOptions(track);
 
         let line = leaflet.polyline(track.points, lineOptions);
@@ -332,6 +346,83 @@ export default class GpxMap {
         if (!this.scrolled) {
             this.clearScroll();
         }
+    }
+
+    animateTracks()
+    {
+        this.animate.disable();
+        let visibleTracks = this.tracks.filter(t => t.visible);
+        if (visibleTracks.length === 0 && this.imageMarkers.length === 0) {
+            return;
+        }  
+
+        let minBound = 0;
+        let maxBound = Math.max(...visibleTracks.map(t => t.points[t.points.length - 1].timestamp - t.points[0].timestamp));
+
+        let start, previousTimeStamp;
+        const markers = [];
+
+        const animate = step.bind(this);
+
+        function step(timestamp)
+        {
+            if (start === undefined)
+            {
+                start = timestamp;
+            }
+            const elapsed = timestamp - start;
+            const stepTime = minBound + (elapsed * 300);
+
+        
+            if (previousTimeStamp !== timestamp)
+            {    
+                for (let i = 0; i < visibleTracks.length; i++)
+                {
+
+                    const track = visibleTracks[i];
+                    const trackStepTime = stepTime + +track.points[0].timestamp;
+                    const point = track.points.find(pt => pt.timestamp > trackStepTime);
+                    
+                    if (point)
+                    {
+                        if (markers[i])
+                        {
+                            markers[i].setLatLng([point.lat, point.lng]);
+                            track.line.addLatLng([point.lat, point.lng]);
+                        }
+                        else
+                        {
+                            markers[i] = leaflet.circleMarker([point.lat, point.lng], { color: '#3388ff', fill: true, fillOpacity: 0.5, pane: 'markerPane' });
+                            markers[i].addTo(this.map);
+                            track.line.setLatLngs([]);
+                        }
+                    }
+                    else
+                    {
+                        if (markers[i])
+                        {
+                            markers[i].remove();
+                        }
+                    }
+                }
+            }
+
+            if (stepTime < maxBound)
+            {
+                previousTimeStamp = timestamp;
+                window.requestAnimationFrame(animate);
+            }
+            else
+            {
+                for (let marker of markers)
+                {
+                    marker.remove();
+                }
+                this.animate.enable();
+            }
+        }
+
+        window.requestAnimationFrame(animate);
     }
 
     screenshot(format, domNode) {
