@@ -1,6 +1,7 @@
 import picoModal from 'picomodal';
 import extractTracks from './track';
 import Image from './image';
+import { unzipSync } from 'fflate';
 
 const AVAILABLE_THEMES = [
     'CartoDB.DarkMatter',
@@ -85,21 +86,63 @@ function handleFileSelect(map, evt) {
         modal.addSuccess();
     };
 
-    const handleTrackFile = async (file) => {
-        for (const track of await extractTracks(file)) {
-            track.filename = file.name;
+    const handleTrackFile = async (file, contents) => {
+        if (file.endsWith('.zip'))
+        {
+            return handleZip(contents);
+        }
+        for (const track of await extractTracks(file, contents)) {
+            track.filename = file;
             tracks.push(track);
             map.addTrack(track);
         }
         modal.addSuccess();
     };
 
+    async function readFile(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const result = e.target.result;
+                try {
+                    return resolve(result);
+                } catch (e) {
+                    return reject(e);
+                }
+            };
+
+            reader.readAsArrayBuffer(file);    
+        });
+    }
+
+    function unzip(bytes) {
+        let data = unzipSync(new Uint8Array(bytes),
+                { filter(file) { return !file.name.endsWith('/'); } }
+        );
+        return data;
+    }
+
+    const handleZipEntry = async entry =>
+    {
+        return new Promise((resolve) => setTimeout(resolve, 0))
+            .then(() => handleTrackFile(...entry));
+    };
+
+    const handleZip = async (contents) => {
+        const unzipped = unzip(contents);
+        modal.addDirectoryEntries(Object.keys(unzipped).length);
+        return Promise.all(Object.entries(unzipped).map(handleZipEntry));
+    }
+
     const handleFile = async file => {
         try {
             if (/\.jpe?g$/i.test(file.name)) {
                 return await handleImage(file);
             }
-            return await handleTrackFile(file);
+            if (/\.zip$/i.test(file.name)) {
+                return await readFile(file).then((contents) => handleZip(contents));
+            }
+            return await readFile(file).then((contents) => handleTrackFile(file.name, contents));
         } catch (err) {
             console.error(err);
             modal.addFailure({name: file.name, error: err});
@@ -131,7 +174,7 @@ function handleFileSelect(map, evt) {
         });
     };
 
-    const readFile = async entry => {
+    const resolveFile = async entry => {
         return new Promise(resolve => {
             entry.file(resolve);
         });
@@ -141,7 +184,7 @@ function handleFileSelect(map, evt) {
     {
         if (entry.isFile)
         {
-            return await readFile(entry).then(handleFile);
+            return await resolveFile(entry).then(handleFile);
         }
         else if (entry.isDirectory)
         {

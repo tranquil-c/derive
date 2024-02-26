@@ -7,12 +7,17 @@
 
 import { XMLParser } from 'fast-xml-parser';
 import FitParser from 'fit-file-parser';
-import Pako from 'pako';
+import { strFromU8 } from 'fflate';;
 
-const parser = new XMLParser({
+const xmlParser = new XMLParser({
     ignoreAttributes: false,
     attributeNamePrefix: '',
     attributesGroupName: '$',
+});
+
+const fitParser = new FitParser({
+    force: true,
+    mode: 'list',
 });
 
 function getSport(sport, name) {
@@ -190,65 +195,32 @@ function extractFITTracks(fit, name) {
     return points.length > 0 ? [{timestamp, points, name, sport}] : [];
 }
 
-function readFile(file, encoding, isGzipped) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const result = e.target.result;
-            try {
-                return resolve(isGzipped ? Pako.inflate(result) : result);
-            } catch (e) {
-                return reject(e);
-            }
-        };
-
-        if (encoding === 'binary') {
-            reader.readAsArrayBuffer(file);
-        } else {
-            reader.readAsText(file);
-        }
-    });
-}
-
-export default function extractTracks(file) {
-    const isGzipped = /\.gz$/i.test(file.name);
-    const strippedName = file.name.replace(/\.gz$/i, '');
-    const format = strippedName.split('.').pop().toLowerCase();
-
+export default function extractTracks(name, contents) {
+    const format = name.split('.').pop().toLowerCase();
     switch (format) {
-    case 'gpx':
-    case 'tcx': /* Handle XML based file formats the same way */
-
-        return readFile(file, 'text', isGzipped)
-            .then(textContents => new Promise((resolve, reject) => {
-                const result = parser.parse(textContents);
+        case 'gpx':
+        case 'tcx':
+            return new Promise((resolve, reject) => {
+                const result = xmlParser.parse(strFromU8(contents));
                 if (result.gpx) {
                     resolve(extractGPXTracks(result.gpx));
                 } else if (result.TrainingCenterDatabase) {
-                    resolve(extractTCXTracks(result.TrainingCenterDatabase, strippedName));
+                    resolve(extractTCXTracks(result.TrainingCenterDatabase, name));
                 } else {
                     reject(new Error('Invalid file type.'));
                 }
-            }));
-
-    case 'fit':
-        return readFile(file, 'binary', isGzipped)
-            .then(contents => new Promise((resolve, reject) => {
-                const parser = new FitParser({
-                    force: true,
-                    mode: 'list',
-                });
-
-                parser.parse(contents, (err, result) => {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        resolve(extractFITTracks(result, strippedName));
-                    }
-                });
-            }));
-
-    default:
-        throw `Unsupported file format: ${format}`;
+            });
+        case 'fit':
+            return new Promise((resolve, reject) => {
+                fitParser.parse(contents, (err, result) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(extractFITTracks(result, name));
+                }
+            });
+            });
+        default:
+            throw `Unsupported file format: ${format}`;
     }
 }
