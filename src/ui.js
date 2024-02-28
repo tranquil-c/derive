@@ -380,6 +380,16 @@ export function buildSettingsModal(tracks, opts, updateCallback) {
 
     </fieldset>
 
+    <fieldset class="form-group">
+        <legend>Animation</legend>
+
+        <div class="row">
+            <label>Playback Rate</label>
+            <input name="playbackRate" type="number" value=${opts.animationOptions.playbackRate}>
+        </div>
+
+    </fieldset>
+
     <span class="form-row">
         <label>Override existing tracks</label>
         <input name="overrideExisting" type="checkbox" ${overrideExisting}>
@@ -417,6 +427,10 @@ export function buildSettingsModal(tracks, opts, updateCallback) {
             options.lineOptions[opt] = elements[opt].checked;
         }
 
+        for (let opt of ['playbackRate']) {
+            options.animationOptions[opt] = elements[opt].value;
+        }
+
         updateCallback(options);
     };
 
@@ -429,7 +443,7 @@ export function buildSettingsModal(tracks, opts, updateCallback) {
       let elements = document.getElementById('settings').elements;
       for (let opt of ['theme', 'color', 'weight', 'opacity', 'markerColor',
                        'markerWeight', 'markerOpacity', 'markerRadius',
-                       'newDate', 'detectColors', 'singleColor', 'highlightNew']) {
+                       'newDate', 'detectColors', 'singleColor', 'highlightNew', 'playbackRate']) {
         elements[opt].addEventListener('change', applyOptions);
       }
     });

@@ -27,6 +27,9 @@ const DEFAULT_OPTIONS = {
         weight: 3,
         radius: 5,
         opacity: 0.5
+    },
+    animationOptions: {
+        playbackRate: 300
     }
 };
 
@@ -47,6 +50,8 @@ export default class GpxMap {
             preferCanvas: true,
         });
 
+        this.trackAnimationFrame = undefined;
+
         let fillStroke = leaflet.Canvas.prototype._fillStroke;
         leaflet.Canvas.prototype._fillStroke = (ctx, layer) => {
             let compositeOperation = ctx.globalCompositeOperation;
@@ -56,7 +61,6 @@ export default class GpxMap {
         }
 
         leaflet.easyButton({
-            type: 'animate',
             states: [{
                 icon: 'fa-camera fa-lg',
                 stateName: 'default',
@@ -79,7 +83,6 @@ export default class GpxMap {
         }).addTo(this.map);
 
         leaflet.easyButton({
-            type: 'animate',
             states: [{
                 icon: 'fa-sliders fa-lg',
                 stateName: 'default',
@@ -94,7 +97,6 @@ export default class GpxMap {
         }).addTo(this.map);
 
         leaflet.easyButton({
-            type: 'animate',
             states: [{
                 icon: 'fa-filter fa-lg',
                 stateName: 'default',
@@ -109,7 +111,6 @@ export default class GpxMap {
         }).addTo(this.map);
 
         this.viewAll = leaflet.easyButton({
-            type: 'animate',
             states: [{
                 icon: 'fa-map fa-lg',
                 stateName: 'default',
@@ -121,13 +122,21 @@ export default class GpxMap {
         }).addTo(this.map);
 
         this.animate = leaflet.easyButton({
-            type: 'animate',
             states: [{
                 icon: 'fa-play fa-lg',
-                steateName: 'default',
+                stateName: 'default',
                 title: 'Play',
-                onClick: () => {
-                    this.animateTracks();
+                onClick: (btn) => {
+                    btn.state('running');
+                    this.animateTracks(btn);
+                },
+            },{
+                icon: 'fa-stop fa-lg',
+                stateName: 'running',
+                title: 'Stop',
+                onClick: (btn) => {
+                    btn.state('default');
+                    this.stopAnimation(btn);
                 },
             }],  
         }).addTo(this.map);
@@ -348,9 +357,8 @@ export default class GpxMap {
         }
     }
 
-    animateTracks()
+    animateTracks(btn)
     {
-        this.animate.disable();
         let visibleTracks = this.tracks.filter(t => t.visible);
         if (visibleTracks.length === 0 && this.imageMarkers.length === 0) {
             return;
@@ -360,7 +368,6 @@ export default class GpxMap {
         let maxBound = Math.max(...visibleTracks.map(t => t.points[t.points.length - 1].timestamp - t.points[0].timestamp));
 
         let start, previousTimeStamp;
-        const markers = [];
 
         const animate = step.bind(this);
 
@@ -371,38 +378,34 @@ export default class GpxMap {
                 start = timestamp;
             }
             const elapsed = timestamp - start;
-            const stepTime = minBound + (elapsed * 300);
+            const stepTime = minBound + (elapsed * this.options.animationOptions.playbackRate);
 
         
             if (previousTimeStamp !== timestamp)
             {    
-                for (let i = 0; i < visibleTracks.length; i++)
+                for (const track of visibleTracks)
                 {
-
-                    const track = visibleTracks[i];
                     const trackStepTime = stepTime + +track.points[0].timestamp;
                     const point = track.points.find(pt => pt.timestamp > trackStepTime);
                     
                     if (point)
                     {
-                        if (markers[i])
+                        if (track.marker)
                         {
-                            markers[i].setLatLng([point.lat, point.lng]);
+                            track.marker.setLatLng([point.lat, point.lng]);
                             track.line.addLatLng([point.lat, point.lng]);
                         }
                         else
                         {
-                            markers[i] = leaflet.circleMarker([point.lat, point.lng], { color: '#3388ff', fill: true, fillOpacity: 0.5, pane: 'markerPane' });
-                            markers[i].addTo(this.map);
+                            track.marker = leaflet.circleMarker([point.lat, point.lng], { color: '#3388ff', fill: true, fillOpacity: 0.5, pane: 'markerPane' });
+                            track.marker.addTo(this.map);
                             track.line.setLatLngs([]);
                         }
                     }
                     else
                     {
-                        if (markers[i])
-                        {
-                            markers[i].remove();
-                        }
+                        track.marker?.remove();
+                        delete track.marker;
                     }
                 }
             }
@@ -410,19 +413,26 @@ export default class GpxMap {
             if (stepTime < maxBound)
             {
                 previousTimeStamp = timestamp;
-                window.requestAnimationFrame(animate);
+                this.trackAnimationRequest = window.requestAnimationFrame(animate);
             }
             else
             {
-                for (let marker of markers)
-                {
-                    marker.remove();
-                }
-                this.animate.enable();
+                btn.state('default');
             }
         }
 
-        window.requestAnimationFrame(animate);
+        this.trackAnimationRequest = window.requestAnimationFrame(animate);
+    }
+
+    stopAnimation(btn)
+    {
+        window.cancelAnimationFrame(this.trackAnimationRequest);
+        this.tracks.forEach(track => {
+            track.marker?.remove();
+            delete track.marker;
+            track.line.setLatLngs(track.points);
+        })
+
     }
 
     screenshot(format, domNode) {
