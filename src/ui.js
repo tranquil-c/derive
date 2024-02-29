@@ -175,8 +175,8 @@ function handleFileSelect(map, evt) {
     };
 
     const resolveFile = async entry => {
-        return new Promise(resolve => {
-            entry.file(resolve);
+        return new Promise((resolve, reject) => {
+            entry.file(resolve, reject);
         });
     };
 
