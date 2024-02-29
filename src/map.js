@@ -3,6 +3,7 @@ import leafletImage from 'leaflet-image';
 import 'leaflet-providers';
 import 'leaflet-easybutton';
 
+import { search } from './util';
 import * as ui from './ui';
 
 
@@ -389,29 +390,31 @@ export default class GpxMap {
             const elapsed = timestamp - start;
             const stepTime = minBound + (elapsed * this.options.animationOptions.playbackRate);
 
-        
             if (previousTimeStamp !== timestamp)
             {    
                 for (const track of visibleTracks)
                 {
                     const trackStepTime = stepTime + +track.points[0].timestamp;
-                    const point = track.points.find(pt => pt.timestamp > trackStepTime);
+
+                    let i = search(track.points, trackStepTime, (pt, target) => pt.timestamp - target);
+                    if (i < 0) { i = ~i; }  
                     
-                    if (point)
+                    if (i > 0 && i < track.points.length)
                     {
+                        const point = track.points[i-1];
                         if (track.marker)
                         {
-                            track.marker.setLatLng([point.lat, point.lng]);
-                            track.line.addLatLng([point.lat, point.lng]);
+                            track.marker.setLatLng(point);
+                            track.line.addLatLng(point);
                         }
                         else
                         {
-                            track.marker = leaflet.circleMarker([point.lat, point.lng], { color: '#3388ff', fill: true, fillOpacity: 0.5, pane: 'markerPane' });
+                            track.marker = leaflet.circleMarker(point, { color: '#3388ff', fill: true, fillOpacity: 0.5, pane: 'markerPane' });
                             track.marker.addTo(this.map);
-                            track.line.setLatLngs([]);
+                            track.line.setLatLngs([point]);
                         }
                     }
-                    else
+                    if (i >= track.points.length)
                     {
                         track.marker?.remove();
                         delete track.marker;
@@ -426,6 +429,7 @@ export default class GpxMap {
             }
             else
             {
+                this.cleanupAnimation();
                 btn.state('default');
             }
         }
@@ -436,12 +440,16 @@ export default class GpxMap {
     stopAnimation(btn)
     {
         window.cancelAnimationFrame(this.trackAnimationRequest);
+        this.cleanupAnimation();
+    }
+
+    cleanupAnimation()
+    {
         this.tracks.forEach(track => {
             track.marker?.remove();
             delete track.marker;
             track.line.setLatLngs(track.points);
         })
-
     }
 
     screenshot(format, domNode) {
