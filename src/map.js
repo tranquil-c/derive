@@ -41,6 +41,9 @@ export default class GpxMap {
         this.filters = {
             minDate: null,
             maxDate: null,
+            showCycling: true,
+            showRunning: true,
+            showOther: true
         };
         this.imageMarkers = [];
 
@@ -233,8 +236,14 @@ export default class GpxMap {
             (t) => t.timestamp && dateBounds.max < t.timestamp,
         ];
 
+        const sportFilters = [];
+        if (this.filters.showCycling) { sportFilters.push((t) => t.sport && t.sport === 'cycling'); }
+        if (this.filters.showRunning) { sportFilters.push((t) => t.sport && t.sport === 'running'); }
+        if (this.filters.showOther) { sportFilters.push((t) => t.sport && t.sport !== 'cycling' && t.sport !== 'running'); }
+
         for (let track of this.tracks) {
             let hideTrack = filters.some(f => f(track));
+            hideTrack |= !sportFilters.some(f => f(track));
 
             if (hideTrack && track.visible) {
                 track.line.remove();

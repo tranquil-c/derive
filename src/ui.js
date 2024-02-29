@@ -454,25 +454,51 @@ export function buildSettingsModal(tracks, opts, updateCallback) {
 
 export function buildFilterModal(tracks, filters, finishCallback) {
     let maxDate = new Date().toISOString().split('T')[0];
+    let showCycling = filters.showCycling ? 'checked' : '';
+    let showRunning = filters.showRunning ? 'checked' : '';
+    let showOther = filters.showOther ? 'checked' : '';
     let modalContent = `
 <h3>Filter Displayed Tracks</h3>
 
 <form id="settings">
-    <span class="form-row">
-        <label for="minDate">Start date:</label>
-        <input type="date" id="minDate" name="minDate"
-            value="${filters.minDate || ''}"
-            min="1990-01-01"
-            max="${maxDate}">
-    </span>
+    <fieldset class="form-group">
+        <legend>Date</legend>
 
-    <span class="form-row">
-        <label for="maxDate">End date:</label>
-        <input type="date" id="maxDate" name="maxDate"
-            value="${filters.maxDate || ''}"
-            min="1990-01-01"
-            max="${maxDate}">
-    </span>
+        <span class="form-row">
+            <label for="minDate">Start:</label>
+            <input type="date" id="minDate" name="minDate"
+                value="${filters.minDate || ''}"
+                min="1990-01-01"
+                max="${maxDate}">
+        </span>
+
+        <span class="form-row">
+            <label for="maxDate">End:</label>
+            <input type="date" id="maxDate" name="maxDate"
+                value="${filters.maxDate || ''}"
+                min="1990-01-01"
+                max="${maxDate}">
+        </span>
+    </fieldset>
+
+    <fieldset>
+        <legend>Activity Type</legend>
+
+        <span class="form-row">
+            <label>Cycling</label>
+            <input name="showCycling" type="checkbox" ${showCycling}>
+        </span>
+
+        <span class="form-row">
+            <label>Running</label>
+            <input name="showRunning" type="checkbox" ${showRunning}>
+        </span>
+
+        <span class="form-row">
+            <label>Other</label>
+            <input name="showOther" type="checkbox" ${showOther}>
+        </span>
+    </fieldset>
 </form>`;
 
     let modal = picoModal({
@@ -491,6 +517,11 @@ export function buildFilterModal(tracks, filters, finishCallback) {
 
         for (let key of ['minDate', 'maxDate']) {
             filters[key] = elements[key].value;
+        }
+
+        for (let key of ['showCycling', 'showRunning', 'showOther'])
+        {
+            filters[key] = elements[key].checked;
         }
 
         finishCallback(filters);
