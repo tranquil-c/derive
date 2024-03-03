@@ -394,6 +394,14 @@ export function buildSettingsModal(tracks, opts, updateCallback) {
             <input name="playbackRate" type="number" value=${opts.animationOptions.playbackRate}>
         </div>
 
+        <div class="row">
+            <label title="Animate all tracks simultaneously"><input name="animationMode" type="radio" value="simultaneous" /> Simultaneous</label>
+            <br/>
+            <label title="Synchronize animation by timestamps"><input name="animationMode" type="radio" value="synchronized" /> Synchronized (group ride)</label>
+            <br/>
+            <label title="Animate only latest track"><input name="animationMode" type="radio" value="latest" /> Latest</label>
+        </div>
+
     </fieldset>
 
     <span class="form-row">
@@ -438,6 +446,7 @@ export function buildSettingsModal(tracks, opts, updateCallback) {
         }
 
         options.lineOptions.colorMode = elements.namedItem('colorMode').value;
+        options.animationOptions.mode = elements.namedItem('animationMode').value;
 
         updateCallback(options);
     };
@@ -451,6 +460,8 @@ export function buildSettingsModal(tracks, opts, updateCallback) {
         let elements = document.getElementById('settings').elements;
     
         elements.namedItem('colorMode').value = opts.lineOptions.colorMode;
+        elements.namedItem('animationMode').value = opts.animationOptions.mode;
+
         for (let opt of ['theme', 'color', 'weight', 'opacity', 'markerColor',
                         'markerWeight', 'markerOpacity', 'markerRadius',
                         'newDate', 'detectColors', 'singleColor', 'highlightNew']) {

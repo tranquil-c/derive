@@ -28,7 +28,8 @@ const DEFAULT_OPTIONS = {
         opacity: 0.5
     },
     animationOptions: {
-        playbackRate: 300
+        playbackRate: 300,
+        mode: "simultaneous"
     }
 };
 
@@ -305,6 +306,7 @@ export default class GpxMap {
         line.addTo(this.map);
 
         this.tracks.push(Object.assign({line, visible: true}, track));
+        this.tracks.sort((a, b) => a.timestamp - b.timestamp);
     }
 
     async markerClick(image) {
@@ -367,15 +369,30 @@ export default class GpxMap {
 
     animateTracks(btn)
     {
+        const animationMode = this.options.animationOptions.mode
         let visibleTracks = this.tracks.filter(t => t.visible);
         if (visibleTracks.length === 0 && this.imageMarkers.length === 0) {
             return;
-        }  
+        }
+        if (animationMode === 'latest')
+        {
+            visibleTracks = [visibleTracks.at(-1)];
+        }
 
-        let minBound = 0;
-        let maxBound = Math.max(...visibleTracks.map(t => t.points[t.points.length - 1].timestamp - t.points[0].timestamp));
+        let minBound, maxBound;
 
-        let start, previousTimeStamp;
+        if (animationMode === 'simultaneous' || animationMode === 'latest')
+        {
+            minBound = 0;
+            maxBound = Math.max(...visibleTracks.map(t => t.points[t.points.length - 1].timestamp - t.points[0].timestamp));
+        }
+        else if (animationMode === 'synchronized')
+        {
+            minBound = +Math.min(...visibleTracks.map(t => t.points.at(0).timestamp));
+            maxBound = +Math.max(...visibleTracks.map(t => t.points.at(-1).timestamp));
+        }
+
+        let start, previousTimeStamp = 0;
 
         const animate = step.bind(this);
 
@@ -388,11 +405,19 @@ export default class GpxMap {
             const elapsed = timestamp - start;
             const stepTime = minBound + (elapsed * this.options.animationOptions.playbackRate);
 
+            if (previousTimeStamp === 0)
+            {
+                for (const track of (visibleTracks))
+                {
+                    track.line.setLatLngs([]);
+                }
+            }
+
             if (previousTimeStamp !== timestamp)
             {    
                 for (const track of visibleTracks)
                 {
-                    const trackStepTime = stepTime + +track.points[0].timestamp;
+                    const trackStepTime = stepTime + (animationMode === 'synchronized' ? 0 : +track.points[0].timestamp);
 
                     let i = search(track.points, trackStepTime, (pt, target) => pt.timestamp - target);
                     if (i < 0) { i = ~i; }  
@@ -409,7 +434,7 @@ export default class GpxMap {
                         {
                             track.marker = leaflet.circleMarker(point, { color: '#3388ff', fill: true, fillOpacity: 0.5, pane: 'markerPane' });
                             track.marker.addTo(this.map);
-                            track.line.setLatLngs([point]);
+                            track.line.addLatLng(point);
                         }
                     }
                     if (i >= track.points.length)
