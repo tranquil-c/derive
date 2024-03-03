@@ -91,7 +91,10 @@ function handleFileSelect(map, evt) {
         {
             return handleZip(contents);
         }
-        for (const track of await extractTracks(file, contents)) {
+
+        const extractedTracks = await extractTracks(file, contents);
+        if (extractedTracks.length > 0) {
+            const track = extractedTracks.reduce((ts, t) => { ts.points = ts.points.concat(t.points); return ts; })
             track.filename = file;
             tracks.push(track);
             map.addTrack(track);
@@ -115,10 +118,17 @@ function handleFileSelect(map, evt) {
         });
     }
 
+    function fileFilter(fileInfo) {
+        const name = fileInfo.name;
+        return name.endsWith('.fit') 
+            || name.endsWith('.tcx')
+            || name.endsWith('.gpx')
+            || name.endsWith('.zip')
+            || (name.endsWith('.json') && name.startsWith('training-session'));    
+    }
+
     function unzip(bytes) {
-        let data = unzipSync(new Uint8Array(bytes),
-                { filter(file) { return !file.name.endsWith('/'); } }
-        );
+        let data = unzipSync(new Uint8Array(bytes), { filter: fileFilter });
         return data;
     }
 

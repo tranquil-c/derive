@@ -195,6 +195,28 @@ function extractFITTracks(fit, name) {
     return points.length > 0 ? [{timestamp, points, name, sport}] : [];
 }
 
+function extractJSONTracks(json, name) {
+    const parsedTracks = [];
+    for (const exercise of json.exercises)
+    {
+        if (!exercise.samples.recordedRoute) { continue; }
+        const timestamp = new Date(exercise.startTime);
+        const points = exercise.samples.recordedRoute.map((point) => ({
+            lat: point.latitude,
+            lng: point.longitude,
+            timestamp: new Date(point.dateTime) 
+        }) );
+        const sport = getSport(exercise.sport, name);
+
+        if (points.length > 0)
+        {
+            parsedTracks.push({timestamp, points, name, sport});
+        }
+
+    }
+    return parsedTracks;
+}
+
 export default function extractTracks(name, contents) {
     const format = name.split('.').pop().toLowerCase();
     switch (format) {
@@ -213,13 +235,23 @@ export default function extractTracks(name, contents) {
         case 'fit':
             return new Promise((resolve, reject) => {
                 fitParser.parse(contents, (err, result) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve(extractFITTracks(result, name));
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(extractFITTracks(result, name));
+                    }
+                });
+            });
+        case 'json':
+            return new Promise((resolve, reject) => {
+                try {
+                    const json = JSON.parse(strFromU8(contents));
+                    resolve(extractJSONTracks(json, name));
                 }
-            });
-            });
+                catch (e) {
+                    reject(e);
+                }
+            })
         default:
             throw `Unsupported file format: ${format}`;
     }
