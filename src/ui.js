@@ -309,10 +309,6 @@ export function buildSettingsModal(tracks, opts, updateCallback) {
         }
     }
 
-    let singleColor = opts.lineOptions.singleColor ? 'checked' : '';
-    let detectColors = opts.lineOptions.detectColors ? 'checked' : '';
-    let highlightNew = opts.lineOptions.highlightNew ? 'checked' : '';
-
     let themes = AVAILABLE_THEMES.map(t => {
         let selected = (t === opts.theme) ? 'selected' : '';
         return `<option ${selected} value="${t}">${t}</option>`;
@@ -336,14 +332,14 @@ export function buildSettingsModal(tracks, opts, updateCallback) {
         <legend>GPS Track Options</legend>
 
         <div class="row">
-            <input name="colorMode" type="radio" id="singleColor" ${singleColor}>
+            <input name="colorMode" type="radio" id="singleColor" value="singleColor">
             <label for="singleColor">Single color</label>
             <input name="color" type="color" value=${opts.lineOptions.color}>
             <br/>
-            <input name="colorMode" type="radio" id="detectColors" ${detectColors}>
+            <input name="colorMode" type="radio" id="detectColors" value="detectColors">
             <label for="detectColors">Color based on activity type</label>
             <br/>
-            <input name="colorMode" type="radio" id="highlightNew" ${highlightNew}>
+            <input name="colorMode" type="radio" id="highlightNew" value="highlightNew">
             <label for="highlightNew">Highlight new activities</label>
             <input type="date" id="newDate" value="${newDate || ''}" min="1990-01-01" max="${maxDate}">
         </div>
@@ -433,7 +429,7 @@ export function buildSettingsModal(tracks, opts, updateCallback) {
             options.markerOptions[optionName] = elements[opt].value;
         }
 
-        for (let opt of ['overrideExisting', 'detectColors', 'singleColor', 'highlightNew']) {
+        for (let opt of ['overrideExisting']) {
             options.lineOptions[opt] = elements[opt].checked;
         }
 
@@ -441,23 +437,26 @@ export function buildSettingsModal(tracks, opts, updateCallback) {
             options.animationOptions[opt] = elements[opt].value;
         }
 
+        options.lineOptions.colorMode = elements.namedItem('colorMode').value;
+
         updateCallback(options);
     };
 
     modal.afterClose((modal) => {
-      applyOptions();
-      modal.destroy();
+        applyOptions();
+        modal.destroy();
     });
 
     modal.afterCreate(() => {
-      let elements = document.getElementById('settings').elements;
-      for (let opt of ['theme', 'color', 'weight', 'opacity', 'markerColor',
-                       'markerWeight', 'markerOpacity', 'markerRadius',
-                       'newDate', 'detectColors', 'singleColor', 'highlightNew', 'playbackRate']) {
-        elements[opt].addEventListener('change', applyOptions);
-      }
+        let elements = document.getElementById('settings').elements;
+    
+        elements.namedItem('colorMode').value = opts.lineOptions.colorMode;
+        for (let opt of ['theme', 'color', 'weight', 'opacity', 'markerColor',
+                        'markerWeight', 'markerOpacity', 'markerRadius',
+                        'newDate', 'detectColors', 'singleColor', 'highlightNew']) {
+            elements[opt].addEventListener('change', applyOptions);
+        }
     });
-
 
     return modal;
 }

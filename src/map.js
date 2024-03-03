@@ -19,9 +19,7 @@ const DEFAULT_OPTIONS = {
         opacity: 0.25,
         smoothFactor: 1,
         overrideExisting: true,
-        singleColor: false,
-        detectColors: true,
-        highlightNew: false,
+        colorMode: 'detectColors',
     },
     markerOptions: {
         color: '#00FF00',
@@ -274,7 +272,7 @@ export default class GpxMap {
     getLineOptions(track, options = this.options) {
         let lineOptions = Object.assign({}, options.lineOptions);
 
-        if (lineOptions.detectColors) {
+        if (lineOptions.colorMode === 'detectColors') {
             if (track.sport === 'walking') {
                 lineOptions.color = '#0000ff';
             } else if (track.sport === 'running') {
@@ -285,7 +283,7 @@ export default class GpxMap {
                 lineOptions.color = '#ff0000';
             }
         }
-        else if (lineOptions.highlightNew)
+        else if (lineOptions.colorMode === 'highlightNew')
         {
             let newDate = new Date(options.newDate);
             if (track.timestamp > newDate)
