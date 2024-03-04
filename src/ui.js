@@ -119,7 +119,7 @@ function handleFileSelect(map, evt) {
     }
 
     function fileFilter(fileInfo) {
-        const name = fileInfo.name;
+        const name = fileInfo.name.toLowerCase();
         return name.endsWith('.fit') 
             || name.endsWith('.tcx')
             || name.endsWith('.gpx')
