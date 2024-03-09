@@ -1,7 +1,7 @@
 import leaflet from 'leaflet';
 import leafletImage from 'leaflet-image';
 import 'leaflet-providers';
-import 'leaflet-easybutton';
+import 'leaflet-sidebar-v2';
 
 import { search } from './util';
 import * as ui from './ui';
@@ -63,86 +63,84 @@ export default class GpxMap {
             ctx.globalCompositeOperation = compositeOperation;
         }
 
-        leaflet.easyButton({
-            states: [{
-                icon: 'fa-camera fa-lg',
-                stateName: 'default',
-                title: 'Export as png',
-                onClick: () => {
-                    let modal = ui.showModal('exportImage')
-                        .afterClose(() => modal.destroy());
-
-                    document.getElementById('render-export').onclick = (e) => {
-                        e.preventDefault();
-
-                        let output = document.getElementById('export-output');
-                        output.innerHTML = 'Rendering <i class="fa fa-cog fa-spin"></i>';
-
-                        let form = document.getElementById('export-settings').elements;
-                        this.screenshot(form.format.value, output);
-                    };
-                }
-            }]
+        this.sidebar = leaflet.control.sidebar({
+            autopan: true,
+            closeButton: true,
+            container: 'sidebar',
+            position: 'left',
         }).addTo(this.map);
 
-        leaflet.easyButton({
-            states: [{
-                icon: 'fa-sliders fa-lg',
-                stateName: 'default',
-                title: 'Open settings dialog',
-                onClick: () => {
-                    ui.buildSettingsModal(this.tracks, this.options, (opts) => {
-                        this.updateOptions(opts);
-                        this.saveOptions(opts);
-                    }).show();
-                },
-            }],
-        }).addTo(this.map);
+        this.sidebar.addPanel({
+            id: 'export',
+            tab: '<i class="fa fa-camera fa-lg"></i>',
+            title: 'Export as png',
+            button: () => {
+                let modal = ui.showModal('exportImage')
+                    .afterClose(() => modal.destroy());
 
-        leaflet.easyButton({
-            states: [{
-                icon: 'fa-filter fa-lg',
-                stateName: 'default',
-                title: 'Filter displayed tracks',
-                onClick: () => {
-                    ui.buildFilterModal(this.tracks, this.filters, (f) => {
-                        this.filters = f;
-                        this.applyFilters();
-                    }).show();
-                }
-            }]
-        }).addTo(this.map);
+                document.getElementById('render-export').onclick = (e) => {
+                    e.preventDefault();
 
-        this.viewAll = leaflet.easyButton({
-            states: [{
-                icon: 'fa-map fa-lg',
-                stateName: 'default',
-                title: 'Zoom to all tracks',
-                onClick: () => {
-                    this.center();
-                },
-            }],
-        }).addTo(this.map);
+                    let output = document.getElementById('export-output');
+                    output.innerHTML = 'Rendering <i class="fa fa-cog fa-spin"></i>';
 
-        this.animate = leaflet.easyButton({
-            states: [{
-                icon: 'fa-play fa-lg',
-                stateName: 'default',
-                title: 'Play',
-                onClick: (btn) => {
-                    btn.state('running');
-                    this.animateTracks(btn);
-                },
-            },{
-                icon: 'fa-stop fa-lg',
-                stateName: 'running',
-                title: 'Stop',
-                onClick: (btn) => {
-                    btn.state('default');
-                    this.stopAnimation();
-                },
-            }],  
-        }).addTo(this.map);
+                    let form = document.getElementById('export-settings').elements;
+                    this.screenshot(form.format.value, output);
+                };
+            }
+        });
+
+        this.sidebar.updatePanel = function(data)
+        {
+            const tab = this._getTab(data.id);
+            if (data.title && data.title[0] !== '<')  { tab.title = data.title; }
+            tab.querySelector('a').innerHTML = data.tab;
+            tab._button = data.button;
+        };
+
+        this.sidebar.addPanel({
+            id: 'settings',
+            tab: '<i class="fa fa-sliders fa-lg"></i>',
+            title: 'Open settings dialog',
+            button: () => {
+                ui.buildSettingsModal(this.tracks, this.options, (opts) => {
+                    this.updateOptions(opts);
+                    this.saveOptions(opts);
+                }).show();
+            },
+        });
+
+        this.sidebar.addPanel({
+            id: 'filters',
+            tab: '<i class="fa fa-filter fa-lg"></i>',
+            title: 'Filter displayed tracks',
+            button: () => {
+                ui.buildFilterModal(this.tracks, this.filters, (f) => {
+                    this.filters = f;
+                    this.applyFilters();
+                }).show();
+            }
+        });
+
+        this.sidebar.addPanel({
+            id: 'viewall',
+            tab: '<i class="fa fa-map fa-lg"></i>',
+            title: 'Zoom to all tracks',
+            button: () => {
+                this.center();
+            },
+            disabled: true
+        });
+
+        this.sidebar.addPanel({
+            id: 'animate',
+            tab: '<i class="fa fa-play fa-lg"></i>',
+            title: 'Play',
+            button: () => {
+                this.animateTracks()
+            },
+            disabled: true
+        })
 
         this.markScrolled = () => {
             this.map.removeEventListener('movestart', this.markScrolled);
@@ -150,8 +148,6 @@ export default class GpxMap {
         };
 
         this.clearScroll();
-        this.viewAll.disable();
-        this.animate.disable();
         this.switchTheme(this.options.theme);
         this.requestBrowserLocation();
     }
@@ -298,8 +294,8 @@ export default class GpxMap {
     }
 
     addTrack(track) {
-        this.viewAll.enable();
-        this.animate.enable();
+        this.sidebar.enablePanel('viewall');
+        this.sidebar.enablePanel('animate');
         let lineOptions = this.getLineOptions(track);
 
         let line = leaflet.polyline(track.points, lineOptions);
@@ -367,8 +363,17 @@ export default class GpxMap {
         }
     }
 
-    animateTracks(btn)
+    animateTracks()
     {
+        this.sidebar.updatePanel({
+            id: 'animate',
+            tab: '<i class="fa fa-stop fa-lg"></i>',
+            title: 'Stop',
+            button: () => {
+                this.stopAnimation()
+            }
+        });
+
         const animationMode = this.options.animationOptions.mode
         let visibleTracks = this.tracks.filter(t => t.visible);
         if (visibleTracks.length === 0 && this.imageMarkers.length === 0) {
@@ -414,14 +419,14 @@ export default class GpxMap {
             }
 
             if (previousTimeStamp !== timestamp)
-            {    
+            {
                 for (const track of visibleTracks)
                 {
                     const trackStepTime = stepTime + (animationMode === 'synchronized' ? 0 : +track.points[0].timestamp);
 
                     let i = search(track.points, trackStepTime, (pt, target) => pt.timestamp - target);
-                    if (i < 0) { i = ~i; }  
-                    
+                    if (i < 0) { i = ~i; }
+
                     if (i > 0 && i < track.points.length)
                     {
                         const point = track.points[i-1];
@@ -453,7 +458,6 @@ export default class GpxMap {
             else
             {
                 this.cleanupAnimation();
-                btn.state('default');
             }
         }
 
@@ -468,6 +472,15 @@ export default class GpxMap {
 
     cleanupAnimation()
     {
+        this.sidebar.updatePanel({
+            id: 'animate',
+            tab: '<i class="fa fa-play fa-lg"></i>',
+            title: 'Play',
+            button: () => {
+                this.animateTracks()
+            }
+        });
+
         this.tracks.forEach(track => {
             track.marker?.remove();
             delete track.marker;

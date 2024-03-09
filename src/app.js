@@ -1,4 +1,5 @@
 import '../style.css';
+import 'leaflet-sidebar-v2/css/leaflet-sidebar'
 
 import GpxMap from './map';
 import {initialize} from './ui';
