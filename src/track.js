@@ -107,7 +107,7 @@ function extractGPXTracks(gpx) {
             }
 
             if (points.length > 0) {
-                parsedTracks.push({timestamp, points, name, sport});
+                parsedTracks.push({timestamp, points, name, sport: 'other'});
             }
         });
     }

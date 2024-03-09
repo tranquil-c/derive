@@ -29,7 +29,7 @@ const DEFAULT_OPTIONS = {
     },
     animationOptions: {
         playbackRate: 300,
-        mode: "simultaneous"
+        mode: 'simultaneous'
     }
 };
 
@@ -139,7 +139,7 @@ export default class GpxMap {
                 title: 'Stop',
                 onClick: (btn) => {
                     btn.state('default');
-                    this.stopAnimation(btn);
+                    this.stopAnimation();
                 },
             }],  
         }).addTo(this.map);
@@ -460,7 +460,7 @@ export default class GpxMap {
         this.trackAnimationRequest = window.requestAnimationFrame(animate);
     }
 
-    stopAnimation(btn)
+    stopAnimation()
     {
         window.cancelAnimationFrame(this.trackAnimationRequest);
         this.cleanupAnimation();

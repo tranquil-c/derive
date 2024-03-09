@@ -24,7 +24,7 @@ if (!HTMLCanvasElement.prototype.toBlob) {
             let len = binStr.length;
             let arr = new Uint8Array(len);
 
-            for (var i = 0; i < len; i++ ) {
+            for (let i = 0; i < len; i++ ) {
                 arr[i] = binStr.charCodeAt(i);
             }
 
