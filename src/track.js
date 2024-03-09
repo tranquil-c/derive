@@ -127,7 +127,7 @@ function extractTCXTracks(tcx, name) {
         let sport = act.$.Sport;
         if (sport === 'Other')
         {
-            sport = act.Training.Plan.Name;
+            sport = act.Training?.Plan.Name;
         }
         sport = getSport(sport, name);
 
@@ -174,8 +174,8 @@ function extractFITTracks(fit, name) {
     }
 
     let timestamp;
-    let sport = fit.sport && fit.sport.sport || null;
-    if (!sport && fit.file_id.manufacturer === 'zwift') {
+    let sport = fit.sports[0]?.sport || null;
+    if (!sport && fit.file_ids[0].manufacturer === 'zwift') {
         sport = 'cycling';
     }
 
