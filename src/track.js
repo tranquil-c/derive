@@ -179,6 +179,8 @@ function extractFITTracks(fit, name) {
         sport = 'cycling';
     }
 
+    let distance = fit.sessions[0].total_distance;
+
     const points = [];
     for (const record of fit.records) {
         if (record.position_lat && record.position_long) {
@@ -192,7 +194,7 @@ function extractFITTracks(fit, name) {
         record.timestamp && (timestamp = record.timestamp);
     }
 
-    return points.length > 0 ? [{timestamp, points, name, sport}] : [];
+    return points.length > 0 ? [{timestamp, points, name, sport, distance}] : [];
 }
 
 function extractJSONTracks(json, name) {
@@ -207,10 +209,11 @@ function extractJSONTracks(json, name) {
             timestamp: new Date(point.dateTime) 
         }) );
         const sport = getSport(exercise.sport, name);
+        const distance = exercise.distance;
 
         if (points.length > 0)
         {
-            parsedTracks.push({timestamp, points, name, sport});
+            parsedTracks.push({timestamp, points, name, sport, distance});
         }
 
     }

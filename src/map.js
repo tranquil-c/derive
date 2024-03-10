@@ -5,7 +5,34 @@ import 'leaflet-sidebar-v2';
 
 import { search } from './util';
 import * as ui from './ui';
+import Tablesort from 'tablesort';
 
+(function(){
+    let cleanNumber = function(i) {
+      return i.replace(/[^\-?0-9.]/g, '');
+    },
+  
+    compareNumber = function(a, b) {
+      a = parseFloat(a);
+      b = parseFloat(b);
+  
+      a = isNaN(a) ? 0 : a;
+      b = isNaN(b) ? 0 : b;
+  
+      return a - b;
+    };
+  
+    Tablesort.extend('number', function(item) {
+      return item.match(/^[-+]?[£\x24Û¢´€]?\d+\s*([,\.]\d{0,2})/) || // Prefixed currency
+        item.match(/^[-+]?\d+\s*([,\.]\d{0,2})?[£\x24Û¢´€]/) || // Suffixed currency
+        item.match(/^[-+]?(\d)*-?([,\.]){0,1}-?(\d)+([E,e][\-+][\d]+)?%?$/); // Number
+    }, function(a, b) {
+      a = cleanNumber(a);
+      b = cleanNumber(b);
+  
+      return compareNumber(b, a);
+    });
+  }());
 
 // Los Angeles is the center of the universe
 const INIT_COORDS = [34.0522, -118.243];
@@ -140,7 +167,19 @@ export default class GpxMap {
                 this.animateTracks()
             },
             disabled: true
-        })
+        });
+
+        this.sidebar.addPanel({
+            id: 'tracklist',
+            tab: '<i class="fa fa-list fa-lg"></i>',
+            title: 'Activity List',
+            pane: '<table id="trackList" class="sort"><thead><tr><th>Timestamp</th><th>Sport</th><th data-sort-method="number">Distance</th></tr></thead><tbody></tbody></table>'
+        });
+
+        const table = this.sidebar._container.querySelector('#trackList');
+        this.sort = new Tablesort(table);
+        this.trackList = table.querySelector('tbody');
+        this.trackCount = 0;
 
         this.markScrolled = () => {
             this.map.removeEventListener('movestart', this.markScrolled);
@@ -242,8 +281,10 @@ export default class GpxMap {
             hideTrack |= !sportFilters.some(f => f(track));
 
             if (hideTrack && track.visible) {
+                this.trackList.querySelector('#' + track.id).style.display = 'none';
                 track.line.remove();
             } else if (!hideTrack && !track.visible){
+                this.trackList.querySelector('#' + track.id).style.display = '';
                 track.line.addTo(this.map);
             }
 
@@ -301,8 +342,60 @@ export default class GpxMap {
         let line = leaflet.polyline(track.points, lineOptions);
         line.addTo(this.map);
 
-        this.tracks.push(Object.assign({line, visible: true}, track));
+        track.line = line;
+        track.visible = true;
+        track.id = "t" + this.trackCount++;
+
+        this.tracks.push(track);
         this.tracks.sort((a, b) => a.timestamp - b.timestamp);
+
+        let tr = document.createElement('tr');
+        let td = document.createElement('td');
+        td = document.createElement('td');
+        td.innerText = track.timestamp?.toLocaleDateString() ?? "no timestamp";
+        td.setAttribute('data-sort', +track.timestamp);
+        tr.appendChild(td);
+
+        td = document.createElement('td');
+        td.innerText = track.sport;
+        tr.appendChild(td);
+
+        let distance = track.distance ?? track.line.getLatLngs().reduce((acc, currPt) => {
+            if (acc.lastPt) {
+                return { lastPt: currPt, distance: acc.distance + currPt.distanceTo(acc.lastPt) };
+            }
+            return { lastPt: currPt, distance: 0 };
+        }, { lastPt: undefined, distance: 0}).distance;
+        distance /= 1000;
+
+        td = document.createElement('td');
+        td.innerText = distance?.toFixed(2);
+
+        tr.id = track.id;
+        tr.appendChild(td);
+        
+        tr.onclick = () => {
+            let offset = this.sidebar._container.getBoundingClientRect().right;
+            this.map.fitBounds(track.line.getBounds(), {
+                paddingTopLeft: [offset, 50],
+                paddingBottomRight: [50, 50]
+            });
+        };
+        tr.onmouseover = () => {
+            track.line.options.color = '#ffffff';
+            track.line.options.opacity = 1;
+            track.line.options.weight = lineOptions.weight * 2;
+            track.line.redraw();
+        }
+        tr.onmouseout = () => {
+            track.line.options.color = lineOptions.color;
+            track.line.options.opacity = lineOptions.opacity;
+            track.line.options.weight = lineOptions.weight;
+            track.line.redraw();
+        }
+        this.trackList.appendChild(tr);
+        this.sort.refresh();
+        this.applyFilters();
     }
 
     async markerClick(image) {
@@ -352,10 +445,12 @@ export default class GpxMap {
         let tracksAndImages = visibleTracks.map(t => t.line)
             .concat(this.imageMarkers);
 
+        let offset = this.sidebar._container.getBoundingClientRect().right;
         this.map.fitBounds((new leaflet.featureGroup(tracksAndImages)).getBounds(), {
             noMoveStart: true,
             animate: false,
-            padding: [50, 20],
+            paddingTopLeft: [offset, 50],
+            paddingBottomRight: [50, 50],
         });
 
         if (!this.scrolled) {
